@@ -5,8 +5,7 @@ import functools
 import torch.optim.lr_scheduler as lr_scheduler
 
 
-
-#--------------------------------INIT NET-------------------------------------
+# --------------------------------INIT NET-------------------------------------
 
 def init_weights(net, init_type='normal', gain=0.02):
     def init_func(m):
@@ -35,15 +34,17 @@ def init_weights(net, init_type='normal', gain=0.02):
 
 def init_net(net, init_type='normal', gpu_ids=[]):
     if len(gpu_ids) > 0:
-        assert(torch.cuda.is_available())
+        assert (torch.cuda.is_available())
         net.cuda()
         net = nn.DataParallel(net)
     init_weights(net, init_type)
     return net
 
-#--------------------------------SELF ATTENTION-------------------------------------
+# --------------------------------SELF ATTENTION-------------------------------
 
 # Self Attention module from self-attention gan
+
+
 class SelfAttention(nn.Module):
     """ Self attention Layer"""
 
@@ -88,12 +89,13 @@ class SelfAttention(nn.Module):
         out = self.gamma*out + x
         return out
 
+
 def get_self_attention_layer(in_dim):
     self_attn_layer = SelfAttention(in_dim)
     return self_attn_layer
 
 
-#--------------------------------NONLINEAR & NORM-------------------------------------
+# --------------------------------NONLINEAR & NORM-----------------------------
 
 def get_non_linearity(layer_type='relu'):
     if layer_type == 'relu':
@@ -108,6 +110,7 @@ def get_non_linearity(layer_type='relu'):
             'nonlinearity activitation [%s] is not found' % layer_type)
     return nl_layer
 
+
 def get_norm_layer(layer_type='instance'):
     if layer_type == 'batch':
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
@@ -116,14 +119,16 @@ def get_norm_layer(layer_type='instance'):
     elif layer_type == 'none':
         norm_layer = None
     else:
-        raise NotImplementedError('normalization layer [%s] is not found' % layer_type)
+        raise NotImplementedError(
+            'normalization layer [%s] is not found' % layer_type)
     return norm_layer
 
 
-#--------------------------------SPECTRAL NORM-------------------------------------
+# --------------------------------SPECTRAL NORM-----------------------------
 
 def l2normalize(v, eps=1e-12):
     return v / (v.norm() + eps)
+
 
 class SpectralNorm(nn.Module):
     def __init__(self, module, name='weight', power_iterations=1):
@@ -181,12 +186,15 @@ class SpectralNorm(nn.Module):
         return self.module.forward(*args)
 
 
-def upsampleLayer(inplanes, outplanes, upsample='basic', padding_type='zero', use_spectral_norm=False):
+def upsampleLayer(inplanes, outplanes, upsample='basic', padding_type='zeros', use_spectral_norm=False):
     # padding_type = 'zero'
     if upsample == 'basic':
         if use_spectral_norm:
             upconv = [SpectralNorm(nn.ConvTranspose2d(
-                      inplanes, outplanes, kernel_size=4, stride=2, padding=1))]
+                      inplanes, outplanes,
+                      kernel_size=4,
+                      stride=2,
+                      padding=1))]
         else:
             upconv = [nn.ConvTranspose2d(
                       inplanes, outplanes, kernel_size=4, stride=2, padding=1)]
@@ -194,21 +202,28 @@ def upsampleLayer(inplanes, outplanes, upsample='basic', padding_type='zero', us
         upconv = [nn.Upsample(scale_factor=2, mode='bilinear'),
                   nn.ReflectionPad2d(1)]
         if use_spectral_norm:
-            upconv += [SpectralNorm(nn.Conv2d(inplanes, outplanes, kernel_size=3, stride=1, padding=0))]
+            upconv += [SpectralNorm(nn.Conv2d(inplanes,
+                                    outplanes,
+                                              kernel_size=3,
+                                              stride=1,
+                                              padding=0))]
         else:
-            upconv += [nn.Conv2d(inplanes, outplanes, kernel_size=3, stride=1, padding=0)]
+            upconv += [nn.Conv2d(inplanes, outplanes,
+                                 kernel_size=3, stride=1, padding=0)]
     else:
         raise NotImplementedError(
             'upsample layer [%s] not implemented' % upsample)
     return upconv
 
 
-#--------------------------------AGIS BLOCK (G BLOCK)------------------------------------
+# --------------------------------AGIS BLOCK (G BLOCK)-----------------------
 
 class AGISNetBlock(nn.Module):
     def __init__(self, input_cont, input_style, outer_nc, inner_nc,
-                 submodule=None, outermost=False, innermost=False, use_spectral_norm=False,
-                 norm_layer=None, nl_layer=None, use_dropout=False, use_attention=False,
+                 submodule=None, outermost=False, innermost=False,
+                 use_spectral_norm=False,
+                 norm_layer=None, nl_layer=None, use_dropout=False,
+                 use_attention=False,
                  upsample='basic', padding_type='zero', wo_skip=False):
         super(AGISNetBlock, self).__init__()
         self.wo_skip = wo_skip
@@ -224,12 +239,15 @@ class AGISNetBlock(nn.Module):
         elif padding_type == 'zero':
             p = 1
         else:
-            raise NotImplementedError('padding [%s] is not implemented' % padding_type)
+            raise NotImplementedError(
+                'padding [%s] is not implemented' % padding_type)
 
         self.outermost = outermost
         self.innermost = innermost
-        downconv1 += [nn.Conv2d(input_cont, inner_nc, kernel_size=3, stride=2, padding=p)]
-        downconv2 += [nn.Conv2d(input_style, inner_nc, kernel_size=3, stride=2, padding=p)]
+        downconv1 += [nn.Conv2d(input_cont, inner_nc,
+                                kernel_size=3, stride=2, padding=p)]
+        downconv2 += [nn.Conv2d(input_style, inner_nc,
+                                kernel_size=3, stride=2, padding=p)]
 
         # downsample is different from upsample
         downrelu1 = nn.LeakyReLU(0.2, True)
@@ -257,7 +275,8 @@ class AGISNetBlock(nn.Module):
                     inner_nc * 3, outer_nc, upsample=upsample, padding_type=padding_type,
                     use_spectral_norm=use_spectral_norm)
 
-            upconv_out = [nn.Conv2d(inner_nc + outer_nc, outer_nc, kernel_size=3, stride=1, padding=p)]
+            upconv_out = [
+                nn.Conv2d(inner_nc + outer_nc, outer_nc, kernel_size=3, stride=1, padding=p)]
 
             down1 = downconv1
             down2 = downconv2
@@ -364,6 +383,8 @@ class AGISNetBlock(nn.Module):
                 return torch.cat([torch.cat([fake_C, fake_B], 1), tmp1], 1), torch.cat([fake_B, tmp1], 1)
 
 # AGISNet Module
+
+
 class AGISNet(nn.Module):
 
     def __init__(self, input_content, input_style, output_nc, num_downs, ngf=64,
@@ -375,7 +396,7 @@ class AGISNet(nn.Module):
         dual_block = AGISNetBlock(ngf*max_nchn, ngf*max_nchn, ngf*max_nchn, ngf*max_nchn,
                                   use_spectral_norm=use_spectral_norm, innermost=True,
                                   norm_layer=norm_layer, nl_layer=nl_layer, upsample=upsample, wo_skip=wo_skip)
-        for i in range(num_downs - 5):
+        for _ in range(num_downs - 5):
             dual_block = AGISNetBlock(ngf*max_nchn, ngf*max_nchn, ngf*max_nchn, ngf*max_nchn, dual_block,
                                       norm_layer=norm_layer, nl_layer=nl_layer, use_dropout=use_dropout,
                                       use_spectral_norm=use_spectral_norm, upsample=upsample, wo_skip=wo_skip)
@@ -397,6 +418,7 @@ class AGISNet(nn.Module):
     def forward(self, content, style):
         return self.model(content, style)
 
+
 def define_G(input_nc, output_nc, ngf, nencode=4, use_spectral_norm=False,
              norm='batch', nl='relu', use_dropout=False, use_attention=False,
              init_type='xavier', gpu_ids=[], upsample='bilinear'):
@@ -407,14 +429,14 @@ def define_G(input_nc, output_nc, ngf, nencode=4, use_spectral_norm=False,
     input_content = input_nc
     input_style = input_nc * nencode
     net = AGISNet(input_content, input_style, output_nc, 6, ngf,
-                    norm_layer=norm_layer,  nl_layer=nl_layer,
-                    use_dropout=use_dropout, use_attention=use_attention,
-                    use_spectral_norm=use_spectral_norm, upsample=upsample)
+                  norm_layer=norm_layer,  nl_layer=nl_layer,
+                  use_dropout=use_dropout, use_attention=use_attention,
+                  use_spectral_norm=use_spectral_norm, upsample=upsample)
 
     return init_net(net, init_type, gpu_ids)
 
 
-#--------------------------------D BLOCK------------------------------------
+# --------------------------------D BLOCK------------------------------------
 
 class D_NLayers(nn.Module):
     def __init__(self, input_nc=3, ndf=64, n_layers=3, use_spectral_norm=False,
@@ -472,6 +494,7 @@ class D_NLayers(nn.Module):
         output = self.model(input)
         return output
 
+
 def define_D(input_nc, ndf, netD,
              norm='batch', nl='lrelu', use_spectral_norm=False,
              use_sigmoid=False, init_type='xavier', gpu_ids=[]):
@@ -492,7 +515,7 @@ def define_D(input_nc, ndf, netD,
     return init_net(net, init_type, gpu_ids)
 
 
-#--------------------------------LOSS------------------------------------
+# --------------------------------LOSS------------------------------------
 
 class GANLoss(nn.Module):
     def __init__(self, mse_loss=True, target_real_label=1.0, target_fake_label=0.0):
@@ -517,6 +540,7 @@ class GANLoss(nn.Module):
         loss = sum(all_losses)
         return loss, all_losses
 
+
 class CXLoss(nn.Module):
     def __init__(self, sigma=0.1, b=1.0, similarity="consine"):
         super(CXLoss, self).__init__()
@@ -526,7 +550,8 @@ class CXLoss(nn.Module):
 
     def center_by_T(self, featureI, featureT):
         # Calculate mean channel vector for feature map.
-        meanT = featureT.mean(0, keepdim=True).mean(2, keepdim=True).mean(3, keepdim=True)
+        meanT = featureT.mean(0, keepdim=True).mean(
+            2, keepdim=True).mean(3, keepdim=True)
         return featureI - meanT, featureT - meanT
 
     def l2_normalize_channelwise(self, features):
@@ -585,6 +610,7 @@ class CXLoss(nn.Module):
         CX_B = -torch.log(CX)
         CX = torch.mean(CX_B)
         return CX, CX_B
+
 
 def getScheduler(optimizer, opt):
     def lambda1(epoch): return 1.0 - max(0, epoch-opt.niter) / \
