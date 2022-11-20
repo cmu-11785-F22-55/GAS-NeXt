@@ -25,32 +25,32 @@ class AGISNetModel(BaseModel):
         use_local_D = opt.isTrain and opt.lambda_local_D > 0.0
 
         self.model_names = ['G'] #TODO: necessary?
-        self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.nz, opt.ngf, self.opt.nencode, netG=opt.netG,
+        self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, self.opt.nencode, 
                                       norm=opt.norm, nl=opt.nl, use_dropout=opt.use_dropout, init_type=opt.init_type,
-                                      gpu_ids=self.gpu_ids, where_add=self.opt.where_add, upsample=opt.upsample)
+                                      gpu_ids=self.gpu_ids, upsample=opt.upsample)
         self.models = [self.netG]
 
         D_output_nc = (opt.input_nc + opt.output_nc) if opt.conditional_D else opt.output_nc
         use_sigmoid = opt.gan_mode == 'dcgan'
         if use_D:
             self.model_names += ['D']
-            self.netD = networks.define_D(D_output_nc, opt.ndf, netD=opt.netD, norm=opt.norm, nl=opt.nl,
+            self.netD = networks.define_D(D_output_nc, opt.ndf, norm=opt.norm, nl=opt.nl,
                                           use_sigmoid=use_sigmoid, init_type=opt.init_type,
-                                          num_Ds=opt.num_Ds, gpu_ids=self.gpu_ids)
+                                          gpu_ids=self.gpu_ids)
             self.models.append(self.netD)
 
         if use_D_B:
             self.model_names += ['D_B']
-            self.netD_B = networks.define_D(D_output_nc, opt.ndf, netD=opt.netD_B, norm=opt.norm, nl=opt.nl,
-                                            use_sigmoid=use_sigmoid, init_type=opt.init_type, num_Ds=opt.num_Ds,
+            self.netD_B = networks.define_D(D_output_nc, opt.ndf, norm=opt.norm, nl=opt.nl,
+                                            use_sigmoid=use_sigmoid, init_type=opt.init_type, 
                                             gpu_ids=self.gpu_ids)
             self.models.append(self.netD_B)
         
         if use_local_D:
             self.model_names += ['D_local']
-            self.netD_local = networks.define_D(D_output_nc, opt.ndf, netD=opt.netD_local, norm=opt.norm, nl=opt.nl,
+            self.netD_local = networks.define_D(D_output_nc, opt.ndf, norm=opt.norm, nl=opt.nl,
                                                 use_sigmoid=use_sigmoid, init_type=opt.init_type,
-                                                num_Ds=opt.num_Ds, gpu_ids=self.gpu_ids)
+                                                gpu_ids=self.gpu_ids)
             self.models.append(self.netD_local)
 
 
