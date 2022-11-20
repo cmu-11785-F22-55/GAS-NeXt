@@ -1,0 +1,85 @@
+----------------- Options ---------------
+               batch_size: 26                            	[default: 16]
+                    beta1: 0.9                           
+         black_epoch_freq: 0                             
+                block_num: 2                             
+               block_size: 32                            
+              center_crop: False                         
+          checkpoints_dir: checkpoints/base_gray_texture/	[default: ./checkpoints]
+            conditional_D: True                          	[default: False]
+           continue_train: True                          	[default: False]
+                 dataroot: ./datasets/base_gray_texture_35	[default: None]
+             dataset_mode: few_fusion                    	[default: aligned]
+                direction: AtoC                          	[default: AtoB]
+             display_freq: 50                            	[default: 500]
+               display_id: 31202                         	[default: 1]
+            display_ncols: 5                             
+             display_port: 9998                          	[default: 8097]
+           display_server: http://localhost              
+          display_winsize: 256                           
+                    epoch: latest                        
+              epoch_count: 1                             
+                 few_size: 7                             	[default: 10]
+                 fineSize: 64                            	[default: 256]
+                 gan_mode: lsgan                         
+                  gpu_ids: 0                             
+                init_type: xavier                        
+                 input_nc: 3                             
+                  isTrain: True                          	[default: None]
+                lambda_CX: 50.0                          	[default: 5.0]
+              lambda_CX_B: 15.0                          	[default: 5.0]
+               lambda_GAN: 1.0                           
+              lambda_GAN2: 1.0                           
+             lambda_GAN_B: 1.0                           	[default: 0.1]
+                lambda_L1: 100.0                         	[default: 10.0]
+              lambda_L1_B: 60.0                          	[default: 10.0]
+                lambda_kl: 0.01                          
+           lambda_local_D: 0.1                           	[default: 1.0]
+                 lambda_z: 0.5                           
+                 loadSize: 64                            	[default: 286]
+                       lr: 2e-05                         	[default: 0.0002]
+           lr_decay_iters: 100                           
+                lr_policy: lambda                        
+         max_dataset_size: inf                           
+                    model: agisnet                       	[default: bicycle_gan]
+                     name: base_gray_texture_35_agisnet_11_11_2022-03	[default: ]
+                      ndf: 32                            	[default: 64]
+                      nef: 32                            	[default: 64]
+                  nencode: 4                             
+                     netD: basic_64                      	[default: basic_256_multi]
+                    netD2: basic_256_multi               
+                   netD_B: basic_64                      	[default: basic_256_multi]
+               netD_local: basic_32                      
+                     netE: resnet_256                    
+                     netG: agisnet                       	[default: unet_256]
+                      ngf: 32                            	[default: 64]
+                    niter: 500                           	[default: 100]
+              niter_decay: 2500                          	[default: 100]
+                       nl: relu                          
+                  no_flip: True                          	[default: False]
+                  no_html: False                         
+                     norm: instance                      
+                   num_Ds: 2                             
+              num_threads: 20                            
+                       nz: 8                             
+                output_nc: 3                             
+                    phase: train                         
+               print_freq: 50                            	[default: 100]
+           resize_or_crop: none                          	[default: resize_and_crop]
+          save_epoch_freq: 50                            	[default: 5]
+         save_latest_freq: 10000                         
+           serial_batches: False                         
+                   suffix:                               
+         update_html_freq: 4000                          
+                 upsample: basic                         
+            use_attention: True                          	[default: False]
+              use_dropout: True                          	[default: False]
+               use_same_D: False                         
+      use_spectral_norm_D: False                         
+      use_spectral_norm_G: False                         
+            validate_freq: 50                            	[default: 0]
+                  verbose: False                         
+                      vgg: ./models/vgg19-dcbb9e9d.pth   
+                 vgg_font: ./models/vgg_font.pth         
+                where_add: all                           
+----------------- End -------------------
