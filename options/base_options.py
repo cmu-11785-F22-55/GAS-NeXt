@@ -3,8 +3,6 @@ import os
 
 import data
 import models
-from util import util
-
 
 class BaseOptions():
     def __init__(self):
@@ -43,7 +41,7 @@ class BaseOptions():
                             help='resize_and_crop, crop, scale_width, scale_width_and_crop, or none')
         parser.add_argument('--dataset_mode', type=str,
                             default='aligned', help='multi_fusion,aligned,single')
-        parser.add_argument('--model', type=str, default='bicycle_gan',
+        parser.add_argument('--model', type=str, default='agisnet',
                             help='chooses which model to use. bicycle,, ...')
         parser.add_argument('--direction', type=str,
                             default='AtoB', help='AtoB or BtoC or AtoC, A base B gray C color.' +
@@ -122,30 +120,6 @@ class BaseOptions():
         self.initialized = True
         return parser
 
-    def gather_options(self):
-        # initialize parser with basic options
-        if not self.initialized:
-            parser = argparse.ArgumentParser(
-                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-            parser = self.initialize(parser)
-
-        # get the basic options
-        opt, _ = parser.parse_known_args()
-
-        # modify model-related parser options
-        model_name = opt.model
-        model_option_setter = models.get_option_setter(model_name)
-        parser = model_option_setter(parser, self.isTrain)
-        opt, _ = parser.parse_known_args()  # parse again with the new defaults
-
-        # modify dataset-related parser options
-        dataset_name = opt.dataset_mode
-        dataset_option_setter = data.get_option_setter(dataset_name)
-        parser = dataset_option_setter(parser, self.isTrain)
-
-        self.parser = parser
-
-        return parser.parse_args()
 
     def print_options(self, opt):
         message = ''
@@ -161,34 +135,43 @@ class BaseOptions():
 
         # save to the disk
         expr_dir = os.path.join(opt.checkpoints_dir, opt.name)
-        util.mkdirs(expr_dir)
+        if not os.path.exists(expr_dir):
+            os.makedirs(expr_dir)
         file_name = os.path.join(expr_dir, 'opt.txt')
         with open(file_name, 'wt') as opt_file:
             opt_file.write(message)
             opt_file.write('\n')
 
     def parse(self):
+        # Gather Options
+        parser = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser = self.initialize(parser)
 
-        opt = self.gather_options()
+        namespace, extra = parser.parse_known_args()
+
+        # TO DO: interface with models
+        model_option_setter = models.get_option_setter(namespace.model)
+        parser = model_option_setter(parser, self.isTrain)
+        namespace, extra = parser.parse_known_args()
+
+        dataset_option_setter = data.get_option_setter(namespace.dataset_mode)
+        parser = dataset_option_setter(parser, self.isTrain)
+
+        opt = parser.parse_args()
+        self.parser = parser
+
         opt.isTrain = self.isTrain   # train or test
-
-        # process opt.suffix
-        if opt.suffix:
-            suffix = ('_' + opt.suffix.format(**vars(opt))
-                      ) if opt.suffix != '' else ''
-            opt.name = opt.name + suffix
 
         self.print_options(opt)
 
         # set gpu ids
-        str_ids = opt.gpu_ids.split(',')
+        gpu_ids = opt.gpu_ids.split(',')
         opt.gpu_ids = []
-        for str_id in str_ids:
-            id = int(str_id)
+        for gpu_id in gpu_ids:
+            id = int(gpu_id)
             if id >= 0:
                 opt.gpu_ids.append(id)
-        # if len(opt.gpu_ids) > 0:
-        #     torch.cuda.set_device(opt.gpu_ids[0])
 
         self.opt = opt
         return self.opt
