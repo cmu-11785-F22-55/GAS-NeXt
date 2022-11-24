@@ -24,7 +24,7 @@ class BaseModel(nn.Module):
 
     def setup(self, opt):
         # TODO may not need it no optimizer
-        if self.isTrain:
+        if opt.isTrain:
             self.schedulers = [networks.getScheduler(
                 optimizer, opt) for optimizer in self.optimizers]
     

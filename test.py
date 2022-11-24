@@ -30,9 +30,8 @@ def test_step(model, dataset, opt):
         ABC_path = data['ABC_path'][0]
         img_path = ABC_path.split('/')[-1].split('.')[0]
         
-        save_images(images, names, img_path, webpage=None, width=opt.fineSize)
+        save_images(images, names, img_path, test=True, width=opt.fineSize)
     
-    webpage.save()
     l1_loss /= n
     return l1_loss
 
