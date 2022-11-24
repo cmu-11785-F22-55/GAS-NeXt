@@ -151,12 +151,12 @@ class BaseOptions():
         namespace, extra = parser.parse_known_args()
 
         # TO DO: interface with models
-        model_option_setter = models.get_option_setter(namespace.model)
-        parser = model_option_setter(parser, self.isTrain)
+        # model_option_setter = models.get_option_setter(namespace.model)
+        # parser = model_option_setter(parser, self.isTrain)
         namespace, extra = parser.parse_known_args()
 
-        dataset_option_setter = data.get_option_setter(namespace.dataset_mode)
-        parser = dataset_option_setter(parser, self.isTrain)
+        # dataset_option_setter = data.get_option_setter(namespace.dataset_mode)
+        # parser = dataset_option_setter(parser, self.isTrain)
 
         opt = parser.parse_args()
         self.parser = parser

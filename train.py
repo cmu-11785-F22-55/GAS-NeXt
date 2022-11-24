@@ -16,8 +16,8 @@ def train_step(model, dataset, opt, total_steps, wandb_run):
         total_steps += batch_size
 
         # TO DO: interface with model
-        model.set_input(data)
-        if not model.is_train():
+        model.setInput(data)
+        if not opt.isTrain:
             continue
         model.optimize_parameters()
 
@@ -25,7 +25,7 @@ def train_step(model, dataset, opt, total_steps, wandb_run):
 
         if total_steps % opt.print_freq == 0:
             # TO DO: interface with model
-            losses = model.get_current_losses()
+            losses = model.getCurrentLosses()
             t = (time.time() - iter_start_t) / batch_size
 
             info = {"epoch": epoch, "step": total_steps, "time": t}
@@ -40,7 +40,7 @@ def train_step(model, dataset, opt, total_steps, wandb_run):
         if total_steps % opt.save_latest_freq == 0:
             print("saving model at epoch {} total_steps {}".format(epoch, total_steps))
             # TO DO: interface with model
-            model.save_networks('latest')
+            model.saveNetworks('latest')
     
     return total_steps
 
@@ -52,7 +52,7 @@ def eval_step(model, dataset, opt, epoch, wandb_run=None):
 
     for i, data in enumerate(dataset):
         # TO DO: interface with model
-        model.set_input(data)
+        model.setInput(data)
         real_in, fake_out_B, real_out_B, fake_out, real_out, loss_B, loss_C = model.validate()
         l1_B_loss += loss_B
         l1_C_loss += loss_C
@@ -129,8 +129,8 @@ if __name__ == '__main__':
         if epoch % opt.save_epoch_freq == 0:
             print("saving model AFTER epoch {} total_steps {}".format(epoch, total_steps))
             # TO DO: interface with model
-            model.save_networks('latest')
-            model.save_networks(epoch)
+            model.saveNetworks('latest')
+            model.saveNetworks(epoch)
 
         if opt.validate_freq > 0 and epoch % opt.validate_freq == 0:
             eval_step(model, val_dataset, val_opt, epoch, run)
@@ -138,4 +138,4 @@ if __name__ == '__main__':
         t = time.time() - epoch_start_t
         print("End of epoch {}/{} \t Time Taken: {} sec".format(epoch, opt.niter + opt.niter_decay, t))
 
-        model.update_learning_rate()
+        model.updateLearningRate()

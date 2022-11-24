@@ -2,15 +2,16 @@ import os
 import torch
 import torch.nn as nn
 from collections import OrderedDict
+import models.networks as networks
 
 
 class BaseModel(nn.Module):
     def __init__(self, opt):
         super(BaseModel, self).__init__()
         self.opt = opt
-        self.gpu_id = opt.gpu_id
+        self.gpu_ids = opt.gpu_ids
         self.device = torch.device(
-            'cuda') if self.gpu_id else torch.device('cpu')
+            'cuda') if self.gpu_ids else torch.device('cpu')
         self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
 
         self.loss_names = []
@@ -21,15 +22,15 @@ class BaseModel(nn.Module):
         # if opt.resize_or_crop != 'scale_width':
         #     torch.backends.cudnn.benchmark = True
 
-    # def setup(self, opt):
-    #     # TODO may not need it no optimizer
-    #     if self.isTrain:
-    #         self.schedulers = [networks.getScheduler(
-    #             optimizer, opt) for optimizer in self.optimizers]
-    #
-    #     # if not self.isTrain or opt.continue_train:
-    #     #     self.load_networks(opt.epoch)
-    #     self.print_networks(opt.verbose)
+    def setup(self, opt):
+        # TODO may not need it no optimizer
+        if self.isTrain:
+            self.schedulers = [networks.getScheduler(
+                optimizer, opt) for optimizer in self.optimizers]
+    
+        # if not self.isTrain or opt.continue_train:
+        #     self.load_networks(opt.epoch)
+        self.print_networks(opt.verbose)
 
     def setInput(self, input):
         self.input = input
@@ -65,15 +66,15 @@ class BaseModel(nn.Module):
         # TODO  don't know if need this
         pass
 
-    # def updateLearningRate(self):
-    #     # TODO may not need it no optimizer
-    #     """
-    #     Update learning rate (called once every epoch)
-    #     """
-    #     for scheduler in self.schedulers:
-    #         scheduler.step()
-    #     lr = self.optimizers[0].param_groups[0]['lr']
-    #     print(f'learning rate = {lr:.7f}')
+    def updateLearningRate(self):
+        # TODO may not need it no optimizer
+        """
+        Update learning rate (called once every epoch)
+        """
+        for scheduler in self.schedulers:
+            scheduler.step()
+        lr = self.optimizers[0].param_groups[0]['lr']
+        print(f'learning rate = {lr:.7f}')
 
     def getCurrentVisuals(self):
         """
@@ -118,7 +119,7 @@ class BaseModel(nn.Module):
                 save_path = os.path.join(self.save_dir, save_filename)
                 net = getattr(self, 'net' + name)
 
-                if len(self.gpu_id) > 0 and torch.cuda.is_available():
+                if len(self.gpu_ids) > 0 and torch.cuda.is_available():
                     torch.save(net.module.cpu().state_dict(), save_path)
                     net.cuda()
                     net = torch.nn.DataParallel(net)

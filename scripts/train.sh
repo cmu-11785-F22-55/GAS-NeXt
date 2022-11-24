@@ -4,7 +4,7 @@ MODEL='agisnet'
 CLASS=${1}
 GPU_ID=${2}
 
-DISPLAY_ID=`date '+%H%M%S'`
+# DISPLAY_ID=`date '+%H%M%S'`
 # DISPLAY_ID=0
 
 FEW_SIZE=0
@@ -145,11 +145,9 @@ NAME=${CLASS}_${MODEL}_${DATE}  # experiment name defined in base_options.py
 
 # command
 CUDA_VISIBLE_DEVICES=${GPU_ID} python3 ./train.py \
-  --display_id ${DISPLAY_ID} \
   --dataroot ./datasets/${CLASS} \
   --name ${NAME} \
   --model ${MODEL} \
-  --display_port ${PORT} \
   --direction ${DIRECTION} \
   --checkpoints_dir ${CHECKPOINTS_DIR} \
   --batch_size ${BATCH_SIZE} \

@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-import networks
-from base_model import BaseModel
-from vgg import VGG19
+import models.networks as networks
+from models.base_model import BaseModel
+from models.vgg import VGG19
 import random
 
 
@@ -46,6 +46,7 @@ class AGISNetModel(BaseModel):
             self.model_names += ['D']
             self.netD = networks.define_D(D_output_nc,
                                           opt.ndf,
+                                          netD=opt.netD,
                                           norm=opt.norm,
                                           nl=opt.nl,
                                           use_sigmoid=use_sigmoid,
@@ -57,6 +58,7 @@ class AGISNetModel(BaseModel):
             self.model_names += ['D_B']
             self.netD_B = networks.define_D(D_output_nc,
                                             opt.ndf,
+                                            netD=opt.netD,
                                             norm=opt.norm,
                                             nl=opt.nl,
                                             use_sigmoid=use_sigmoid,
@@ -68,6 +70,7 @@ class AGISNetModel(BaseModel):
             self.model_names += ['D_local']
             self.netD_local = networks.define_D(D_output_nc,
                                                 opt.ndf,
+                                                netD=opt.netD,
                                                 norm=opt.norm,
                                                 nl=opt.nl,
                                                 use_sigmoid=use_sigmoid,
@@ -257,21 +260,21 @@ class AGISNetModel(BaseModel):
     def update_D(self):
         # update D
         if self.opt.lambda_GAN > 0.0:
-            self.set_requires_grad(self.netD, True)
+            self.setRequiresGrad(self.netD, True)
             self.optimizer_D.zero_grad()
             self.loss_D, self.losses_D = self.backward_D(
                 self.netD, self.real_data_C, self.fake_data_C)
             self.optimizer_D.step()
 
         if self.opt.lambda_GAN_B > 0.0:
-            self.set_requires_grad(self.netD_B, True)
+            self.setRequiresGrad(self.netD_B, True)
             self.optimizer_D_B.zero_grad()
             self.loss_D_B, self.losses_D_B = self.backward_D(
                 self.netD_B, self.real_data_B, self.fake_data_B)
             self.optimizer_D_B.step()
 
         if self.opt.lambda_local_D > 0.0:
-            self.set_requires_grad(self.netD_local, True)
+            self.setRequiresGrad(self.netD_local, True)
             self.optimizer_Dlocal.zero_grad()
             self.loss_Dlocal, self.losses_Dlocal = self.backward_D(self.netD_local,
                                                                    self.real_color_blocks,
@@ -281,8 +284,8 @@ class AGISNetModel(BaseModel):
 
     def update_G(self):
         # update dual net G
-        self.set_requires_grad(self.netD, False)
-        self.set_requires_grad(self.netD_B, False)
+        self.setRequiresGrad(self.netD, False)
+        self.setRequiresGrad(self.netD_B, False)
         # TODO: not required to set require grad for netD_local false?
         # self.set_requires_grad(self.netD_local, False)
 

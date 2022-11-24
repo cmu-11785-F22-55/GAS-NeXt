@@ -14,12 +14,12 @@ def test_step(model, dataset, opt):
 
     # TO DO: remove webpage
     web_dir = os.path.join(opt.results_dir, opt.phase + '_sync' if opt.sync else opt.phase)
-    webpage = html.HTML(web_dir, 'Training = %s, Phase = %s, Class = %s' % (opt.name, opt.phase, opt.name))
+    # webpage = html.HTML(web_dir, 'Training = %s, Phase = %s, Class = %s' % (opt.name, opt.phase, opt.name))
 
     for i, data in enumerate(islice(dataset, opt.num_test)):
         print('process input image {}/{}'.format(i, opt.num_test))
 
-        model.set_input(data)
+        model.setInput(data)
         
         real_in, fake_out_B, real_out_B, fake_out, real_out, l1_loss = model.test()
         l1_loss += l1_loss.item()
@@ -30,7 +30,7 @@ def test_step(model, dataset, opt):
         ABC_path = data['ABC_path'][0]
         img_path = ABC_path.split('/')[-1].split('.')[0]
         
-        save_images(images, names, img_path, webpage=webpage, width=opt.fineSize)
+        save_images(images, names, img_path, webpage=None, width=opt.fineSize)
     
     webpage.save()
     l1_loss /= n
