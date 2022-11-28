@@ -4,5 +4,6 @@ from .agisblock import *
 from .agisnet import *
 from .attention import *
 from .dnlayer import *
+from .functional import *
 from .init import *
 from .spectralnorm import *
