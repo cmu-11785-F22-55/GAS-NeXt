@@ -7,3 +7,4 @@ from .dnlayer import *
 from .functional import *
 from .init import *
 from .spectralnorm import *
+from .loss import *
