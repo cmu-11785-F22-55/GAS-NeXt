@@ -1,11 +1,11 @@
 import functools
 
+import torch
 import torch.nn as nn
 import torch.optim.lr_scheduler as lr_scheduler
 
 from .agisnet import AGISNet
 from .dnlayer import D_NLayers
-from .init import init_net
 
 
 def define_G(
@@ -23,8 +23,8 @@ def define_G(
     upsample="bilinear",
 ):
     net = None
-    norm_layer = get_norm_layer(layer_type=norm)
-    nl_layer = get_non_linearity(layer_type=nl)
+    norm_layer = _get_norm_layer(layer_type=norm)
+    nl_layer = _get_non_linearity(layer_type=nl)
 
     input_content = input_nc
     input_style = input_nc * nencode
@@ -42,7 +42,7 @@ def define_G(
         upsample=upsample,
     )
 
-    return init_net(net, init_type, gpu_ids)
+    return _init_net(net, init_type, gpu_ids)
 
 
 def define_D(
@@ -57,9 +57,9 @@ def define_D(
     gpu_ids=[],
 ):
     net = None
-    norm_layer = get_norm_layer(layer_type=norm)
+    norm_layer = _get_norm_layer(layer_type=norm)
     nl = "lrelu"  # use leaky relu for D
-    nl_layer = get_non_linearity(layer_type=nl)
+    nl_layer = _get_non_linearity(layer_type=nl)
 
     if netD == "basic_32":
         net = D_NLayers(
@@ -85,10 +85,10 @@ def define_D(
         raise NotImplementedError(
             "Discriminator model name [%s] is not recognized" % net
         )
-    return init_net(net, init_type, gpu_ids)
+    return _init_net(net, init_type, gpu_ids)
 
 
-def get_non_linearity(layer_type="relu"):
+def _get_non_linearity(layer_type="relu"):
     if layer_type == "relu":
         nl_layer = functools.partial(nn.ReLU, inplace=True)
     elif layer_type == "lrelu":
@@ -102,7 +102,7 @@ def get_non_linearity(layer_type="relu"):
     return nl_layer
 
 
-def get_norm_layer(layer_type="instance"):
+def _get_norm_layer(layer_type="instance"):
     if layer_type == "batch":
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
     elif layer_type == "instance":
@@ -119,3 +119,51 @@ def get_scheduler(optimizer, opt):
         return 1.0 - max(0, epoch - opt.niter) / float(opt.niter_decay + 1)
 
     return lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
+
+
+def _init_net(net, init_type="normal", gpu_ids=[]):
+    """Initialize network
+
+    Args:
+        net: network
+        init_type (str, optional): 'normal', 'xavier', 'kaiming' or 'orthogonal'.
+                                    Defaults to "normal".
+        gpu_ids (list, optional): GPU IDs. Defaults to [].
+
+    Returns:
+        net: initialized network
+    """
+    if len(gpu_ids) > 0:
+        assert torch.cuda.is_available()
+        net.cuda()
+        net = torch.nn.DataParallel(net)
+    _init_weights(net, init_type)
+    return net
+
+
+def _init_weights(net, init_type="normal", gain=0.02):
+    def init_func(layer):
+        classname = layer.__class__.__name__
+        if hasattr(layer, "weight") and (
+            classname.find("Conv") != -1 or classname.find("Linear") != -1
+        ):
+            if init_type == "normal":
+                nn.init.normal_(layer.weight.data, 0.0, gain)
+            elif init_type == "xavier":
+                nn.init.xavier_normal_(layer.weight.data, gain=gain)
+            elif init_type == "kaiming":
+                nn.init.kaiming_normal_(layer.weight.data, a=0, mode="fan_in")
+            elif init_type == "orthogonal":
+                nn.init.orthogonal_(layer.weight.data, gain=gain)
+            else:
+                raise NotImplementedError(
+                    "initialization method [%s] is not implemented" % init_type
+                )
+            if hasattr(layer, "bias") and layer.bias is not None:
+                nn.init.constant_(layer.bias.data, 0.0)
+        elif classname.find("BatchNorm2d") != -1:
+            nn.init.normal_(layer.weight.data, 1.0, gain)
+            nn.init.constant_(layer.bias.data, 0.0)
+
+    print("initialize network with %s" % init_type)
+    net.apply(init_func)
