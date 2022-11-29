@@ -15,7 +15,6 @@ def train_step(model, dataset, opt, total_steps, wandb_run):
         iter_start_t = time.time()
         total_steps += batch_size
 
-        # TO DO: interface with model
         model.setInput(data)
         if not opt.isTrain:
             continue
@@ -24,7 +23,6 @@ def train_step(model, dataset, opt, total_steps, wandb_run):
         # Removed display_freq
 
         if total_steps % opt.print_freq == 0:
-            # TO DO: interface with model
             losses = model.getCurrentLosses()
             t = (time.time() - iter_start_t) / batch_size
 
@@ -39,7 +37,6 @@ def train_step(model, dataset, opt, total_steps, wandb_run):
         
         if total_steps % opt.save_latest_freq == 0:
             print("saving model at epoch {} total_steps {}".format(epoch, total_steps))
-            # TO DO: interface with model
             model.saveNetworks('latest')
     
     return total_steps
@@ -51,7 +48,6 @@ def eval_step(model, dataset, opt, epoch, wandb_run=None):
     n = 0
 
     for i, data in enumerate(dataset):
-        # TO DO: interface with model
         model.setInput(data)
         real_in, fake_out_B, real_out_B, fake_out, real_out, loss_B, loss_C = model.validate()
         l1_B_loss += loss_B
@@ -102,7 +98,6 @@ if __name__ == '__main__':
         val_dataset_size = len(val_data_loader)
         print('#validation images = %d' % val_dataset_size)
     
-    # TO DO: interface with create_model
     model = create_model(opt)
     model.setup(opt)
 
@@ -128,7 +123,6 @@ if __name__ == '__main__':
         
         if epoch % opt.save_epoch_freq == 0:
             print("saving model AFTER epoch {} total_steps {}".format(epoch, total_steps))
-            # TO DO: interface with model
             model.saveNetworks('latest')
             model.saveNetworks(epoch)
 
