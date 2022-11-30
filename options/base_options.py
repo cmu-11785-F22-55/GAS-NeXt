@@ -114,6 +114,7 @@ class BaseOptions():
         
         # WandB
         parser.add_argument('--use_wandb', action='store_true', help='if use wandb')
+        parser.add_argument('--wandb_key', type=str, default='*', help='wandb API key')
         
         # special tasks
         self.initialized = True
