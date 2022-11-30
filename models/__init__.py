@@ -27,14 +27,8 @@ def find_model_using_name(model_name):
     return model
 
 
-# def get_option_setter(model_name):
-#     model_class = find_model_using_name(model_name)
-#     return model_class.modify_commandline_options
-
-
 def create_model(opt):
     model = find_model_using_name(opt.model)
     instance = model(opt)
-    # instance.initialize(opt)
     print("model GAS-NeXt was created")
     return instance
