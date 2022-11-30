@@ -20,8 +20,6 @@ def train_step(model, dataset, opt, total_steps, wandb_run):
             continue
         model.optimize_parameters()
 
-        # Removed display_freq
-
         if total_steps % opt.print_freq == 0:
             losses = model.getCurrentLosses()
             t = (time.time() - iter_start_t) / batch_size
