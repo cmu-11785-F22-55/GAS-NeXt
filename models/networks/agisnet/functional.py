@@ -88,6 +88,13 @@ def define_D(
     return _init_net(net, init_type, gpu_ids)
 
 
+def get_scheduler(optimizer, opt):
+    def lambda1(epoch):
+        return 1.0 - max(0, epoch - opt.niter) / float(opt.niter_decay + 1)
+
+    return lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
+
+
 def _get_non_linearity(layer_type="relu"):
     if layer_type == "relu":
         nl_layer = functools.partial(nn.ReLU, inplace=True)
@@ -112,13 +119,6 @@ def _get_norm_layer(layer_type="instance"):
     else:
         raise NotImplementedError("normalization layer [%s] is not found" % layer_type)
     return norm_layer
-
-
-def get_scheduler(optimizer, opt):
-    def lambda1(epoch):
-        return 1.0 - max(0, epoch - opt.niter) / float(opt.niter_decay + 1)
-
-    return lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
 
 
 def _init_net(net, init_type="normal", gpu_ids=[]):

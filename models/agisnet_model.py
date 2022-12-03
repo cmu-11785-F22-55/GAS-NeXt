@@ -1,18 +1,29 @@
+import os
 import random
+from collections import OrderedDict
 
 import torch
 import torch.nn as nn
 
-import models.networks as networks
-from models.base_model import BaseModel
-from models.vgg import VGG19
+from .networks import CXLoss, GANLoss, define_D, define_G, get_scheduler
+from .vgg import VGG19
 
 
-class AGISNetModel(BaseModel):
+class AGISNetModel(nn.Module):
     def __init__(self, opt):
         super(AGISNetModel, self).__init__(opt)
         if opt.isTrain:
             assert opt.batch_size % 2 == 0, f"batch size {opt.batch_size} is not even."
+
+        self.opt = opt
+        self.gpu_ids = opt.gpu_ids
+        self.device = torch.device("cuda") if self.gpu_ids else torch.device("cpu")
+        self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
+
+        self.loss_names = []
+        self.model_names = []
+        self.visual_names = []
+        self.image_paths = []
 
         self.loss_names = [
             "G_L1",
@@ -45,7 +56,7 @@ class AGISNetModel(BaseModel):
         use_local_D = opt.isTrain and opt.lambda_local_D > 0.0
 
         self.model_names = ["G"]  # TODO: necessary?
-        self.netG = networks.define_G(
+        self.netG = define_G(
             opt.input_nc,
             opt.output_nc,
             opt.ngf,
@@ -65,7 +76,7 @@ class AGISNetModel(BaseModel):
         use_sigmoid = opt.gan_mode == "dcgan"
         if use_D:
             self.model_names += ["D"]
-            self.netD = networks.define_D(
+            self.netD = define_D(
                 D_output_nc,
                 opt.ndf,
                 netD=opt.netD,
@@ -79,7 +90,7 @@ class AGISNetModel(BaseModel):
 
         if use_D_B:
             self.model_names += ["D_B"]
-            self.netD_B = networks.define_D(
+            self.netD_B = define_D(
                 D_output_nc,
                 opt.ndf,
                 netD=opt.netD,
@@ -93,7 +104,7 @@ class AGISNetModel(BaseModel):
 
         if use_local_D:
             self.model_names += ["D_local"]
-            self.netD_local = networks.define_D(
+            self.netD_local = define_D(
                 D_output_nc,
                 opt.ndf,
                 netD=opt.netD,
@@ -106,13 +117,11 @@ class AGISNetModel(BaseModel):
             self.models.append(self.netD_local)
 
         if opt.isTrain:
-            self.criterionGAN = networks.GANLoss(mse_loss=not use_sigmoid).to(
-                self.device
-            )
+            self.criterionGAN = GANLoss(mse_loss=not use_sigmoid).to(self.device)
             self.criterionL1 = nn.L1Loss(reduction="none")
             self.criterionL1_reduce = nn.L1Loss()
 
-            self.criterionCX = networks.CXLoss(sigma=0.5).to(self.device)
+            self.criterionCX = CXLoss(sigma=0.5).to(self.device)
             self.vgg19 = VGG19().to(self.device)
             self.vgg19.load_model(self.opt.vgg)
             self.vgg19.eval()
@@ -141,7 +150,7 @@ class AGISNetModel(BaseModel):
                 )
                 self.optimizers.append(self.optimizer_Dlocal)
 
-    def setInput(self, input):
+    def set_input(self, input):
         self.real_A = input["A"].to(self.device)  # A is the base font
         self.real_B = input["B"].to(self.device)  # B is the gray shape
         # B_G is for GAN, label == 1: B_G == B, else B_G == Shapes[rand]
@@ -422,3 +431,169 @@ class AGISNetModel(BaseModel):
         blr_blk = torch.cat(blr_blk)
 
         return inp_blk, tar_blk, blr_blk
+
+    def setup(self, opt):
+        # TODO may not need it no optimizer
+        if opt.isTrain:
+            self.schedulers = [
+                get_scheduler(optimizer, opt) for optimizer in self.optimizers
+            ]
+
+        # if not self.isTrain or opt.continue_train:
+        #     self.load_networks(opt.epoch)
+        self.print_networks(opt.verbose)
+
+    def setInput(self, input):
+        self.input = input
+
+    def forward(self):
+        pass
+
+    def isTrain(self):
+        # TODO don't know if need this
+        return True
+
+    def setRequiresGrad(self, net, requires_grad=False):
+        if net is not None:
+            for param in net.parameters():
+                param.requires_grad = requires_grad  # to avoid computation
+
+    def test(self):
+        """
+        Used in test time, wrapping `forward` in no_grad() so we don't save
+        Intermediate steps for backprop
+        """
+        # TODO don't know if need this wrapper
+        with torch.no_grad():
+            self.forward()
+
+    def getImagePaths(self):
+        """
+        Get image paths
+        """
+        return self.image_paths
+
+    def optimizeParameters(self):
+        # TODO  don't know if need this
+        pass
+
+    def updateLearningRate(self):
+        # TODO may not need it no optimizer
+        """
+        Update learning rate (called once every epoch)
+        """
+        for scheduler in self.schedulers:
+            scheduler.step()
+        lr = self.optimizers[0].param_groups[0]["lr"]
+        print(f"learning rate = {lr:.7f}")
+
+    def getCurrentVisuals(self):
+        """
+        Return visualization images.
+        train.py will display these images, and save the images to a html
+        """
+        visual_ret = OrderedDict()
+        for name in self.visual_names:
+            if isinstance(name, str):
+                visual_ret[name] = getattr(self, name)
+        return visual_ret
+
+    def getCurrentLosses(self):
+        """
+        Return traning losses/errors.
+        train.py will print out these errors as debugging information
+
+        """
+        errors_ret = OrderedDict()
+        for name in self.loss_names:
+            if isinstance(name, str):
+                # float(...) works for both scalar tensor and float number
+                errors_ret[name] = float(getattr(self, "loss_" + name))
+        return errors_ret
+
+    def eval(self):
+        """
+        Make models eval mode during test time
+        """
+        for name in self.model_names:
+            if isinstance(name, str):
+                net = getattr(self, "net" + name)
+                net.eval()
+
+    def saveNetworks(self, epoch):
+        """
+        Save models to the disk
+        """
+        for name in self.model_names:
+            if isinstance(name, str):
+                save_filename = "%s_net_%s.pth" % (epoch, name)
+                save_path = os.path.join(self.save_dir, save_filename)
+                net = getattr(self, "net" + name)
+
+                if len(self.gpu_ids) > 0 and torch.cuda.is_available():
+                    torch.save(net.module.cpu().state_dict(), save_path)
+                    net.cuda()
+                    net = torch.nn.DataParallel(net)
+                else:
+                    torch.save(net.cpu().state_dict(), save_path)
+
+    def __patch_instance_norm_state_dict(self, state_dict, module, keys, i=0):
+        key = keys[i]
+        if i + 1 == len(keys):  # at the end, pointing to a parameter/buffer
+            if module.__class__.__name__.startswith("InstanceNorm") and (
+                key == "running_mean" or key == "running_var"
+            ):
+                if getattr(module, key) is None:
+                    state_dict.pop(".".join(keys))
+            if module.__class__.__name__.startswith("InstanceNorm") and (
+                key == "num_batches_tracked"
+            ):
+                state_dict.pop(".".join(keys))
+        else:
+            self.__patch_instance_norm_state_dict(
+                state_dict, getattr(module, key), keys, i + 1
+            )
+
+    # load models from the disk
+    def loadNetworks(self, epoch):
+        """
+        Load models from the disk
+        """
+        for name in self.model_names:
+            if isinstance(name, str):
+                load_filename = "%s_net_%s.pth" % (epoch, name)
+                load_path = os.path.join(self.save_dir, load_filename)
+                net = getattr(self, "net" + name)
+                if isinstance(net, torch.nn.DataParallel):
+                    net = net.module
+                print(f"loading the model from {load_path}")
+                state_dict = torch.load(load_path, map_location=self.device)
+                if hasattr(state_dict, "_metadata"):
+                    del state_dict._metadata
+
+                # patch InstanceNorm checkpoints prior to 0.4
+                # need to copy keys here because we mutate in loop
+                for key in list(state_dict.keys()):
+                    self.__patch_instance_norm_state_dict(
+                        state_dict, net, key.split(".")
+                    )
+                net.load_state_dict(state_dict)
+
+    def print_networks(self, verbose):
+        """
+        Print network information
+        """
+        print("---------- Networks initialized -------------")
+        for name in self.model_names:
+            if isinstance(name, str):
+                net = getattr(self, "net" + name)
+                num_params = 0
+                for param in net.parameters():
+                    num_params += param.numel()
+                if verbose:
+                    print(net)
+                print(
+                    f"[Network %{name}] Total number \
+                of parameters : {num_params/1e6:.3f} M"
+                )
+        print("-----------------------------------------------")
