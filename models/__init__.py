@@ -16,6 +16,7 @@ See our template model class 'template_model.py' for an example.
 """
 
 import importlib
+
 from models.base_model import BaseModel
 
 
