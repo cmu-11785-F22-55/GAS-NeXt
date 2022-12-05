@@ -28,8 +28,8 @@ class BaseModel(nn.Module):
             self.schedulers = [networks.getScheduler(
                 optimizer, opt) for optimizer in self.optimizers]
     
-        # if not self.isTrain or opt.continue_train:
-        #     self.load_networks(opt.epoch)
+        if not opt.isTrain or opt.continue_train:
+            self.loadNetworks(opt.epoch)
         self.print_networks(opt.verbose)
 
     def setInput(self, input):
