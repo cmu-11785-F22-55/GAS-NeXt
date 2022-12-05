@@ -42,15 +42,14 @@ class BaseModel(ABC):
         self.save_dir = os.path.join(
             opt.checkpoints_dir, opt.name
         )  # save all the checkpoints to save_dir
-        if (
-            opt.preprocess != "scale_width"
-        ):  # with [scale_width], input images might have different sizes, which hurts the performance of cudnn.benchmark.
-            torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.benchmark = True
         self.loss_names = []
         self.model_names = []
         self.visual_names = []
         self.optimizers = []
         self.image_paths = []
+        # used for learning rate scheduler 'reduceOnPlateau'
+        self.metric = 0
 
     @staticmethod
     def modify_commandline_options(parser, is_train):
@@ -79,10 +78,6 @@ class BaseModel(ABC):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
         pass
 
-    def is_train(self):
-        """check if the current batch is good for training."""
-        return True
-
     @abstractmethod
     def optimize_parameters(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
@@ -99,7 +94,8 @@ class BaseModel(ABC):
                 networks.get_scheduler(optimizer, opt) for optimizer in self.optimizers
             ]
         if not self.isTrain or opt.continue_train:
-            self.load_networks(opt.epoch)
+            load_suffix = "iter_%d" % opt.load_iter if opt.load_iter > 0 else opt.epoch
+            self.load_networks(load_suffix)
         self.print_networks(opt.verbose)
 
     def eval(self):
@@ -130,7 +126,11 @@ class BaseModel(ABC):
     def update_learning_rate(self):
         """Update learning rates for all the networks; called at the end of every epoch"""
         for scheduler in self.schedulers:
-            scheduler.step()
+            if self.opt.lr_policy == "plateau":
+                scheduler.step(self.metric)
+            else:
+                scheduler.step()
+
         lr = self.optimizers[0].param_groups[0]["lr"]
         print("learning rate = %.7f" % lr)
 
