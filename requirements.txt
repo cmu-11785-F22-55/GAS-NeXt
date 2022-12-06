@@ -2,4 +2,4 @@ torch
 torchvision
 dominate
 visdom
-pygame
+Pillow==6.1
