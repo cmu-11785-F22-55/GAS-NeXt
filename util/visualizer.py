@@ -11,7 +11,7 @@ def save_images(images, names, image_path, test=False, opt=None, aspect_ratio=1.
     name = ntpath.basename(image_path)
 
     if test:  # test mode
-        path = 'images/'
+        path = 'test_images/'
         if not os.path.exists(path):
             os.makedirs(path)
         image_dir = path

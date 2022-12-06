@@ -113,7 +113,7 @@ class BaseOptions():
         # parser.add_argument('--netD2', type=str, default='basic_64', help='selects model to use for netD2')
         
         # WandB
-        parser.add_argument('--use_wandb', action='store_true', help='if use wandb')
+        parser.add_argument('--use_wandb', default=False, action='store_true', help='if use wandb')
         parser.add_argument('--wandb_key', type=str, default='*', help='wandb API key')
         
         # special tasks

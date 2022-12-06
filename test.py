@@ -65,6 +65,6 @@ if __name__ == '__main__':
     
     test_loss = test_step(model, dataset, opt)
 
-    l1_loss_file = os.path.join(opt.results_dir, opt.phase, "l1_loss.txt")
+    l1_loss_file = os.path.join('test_images/', "l1_loss.txt")
     with open(l1_loss_file, "w") as f:
         f.write(str(test_loss))
