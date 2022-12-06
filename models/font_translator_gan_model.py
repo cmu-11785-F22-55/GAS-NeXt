@@ -1,4 +1,4 @@
-import ftgan_networks
+import models.ftgan_networks as ftgan_networks
 import torch
 
 from .base_model import BaseModel

@@ -1,8 +1,7 @@
 import torch
 
 from .base_model import BaseModel
-import ftgan_networks
-
+import models.ftgan_networks as ftgan_networks
 
 class EMDModel(BaseModel):
     @staticmethod

@@ -4,8 +4,7 @@ from collections import OrderedDict
 
 import torch
 
-from . import networks
-
+import models.ftgan_networks as networks
 
 class BaseModel(ABC):
     """This class is an abstract base class (ABC) for models.
