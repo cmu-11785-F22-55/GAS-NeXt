@@ -12,7 +12,8 @@ class FontTranslatorGANModel(BaseModel):
 
         if is_train:
             parser.set_defaults(
-                batch_size=256, pool_size=0, gan_mode="hinge", netD="basic_64"
+                # batch_size=256, pool_size=0, gan_mode="hinge", netD="basic_64"
+                batch_size=128, pool_size=0, gan_mode="hinge", netD="basic_64"
             )
             parser.add_argument(
                 "--lambda_L1", type=float, default=100.0, help="weight for L1 loss"
