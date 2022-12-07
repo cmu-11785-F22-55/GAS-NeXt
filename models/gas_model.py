@@ -1,10 +1,11 @@
 import models.ftgan_networks as ftgan_networks
 import torch
+import random
 
 from .base_model import BaseModel
 
 
-class GAS(BaseModel):
+class GASModel(BaseModel):
     @staticmethod
     def modify_commandline_options(parser, is_train=True):
         # changing the default values
@@ -40,7 +41,7 @@ class GAS(BaseModel):
                 "--lambda_local", type=float, default=0.1, help="weight for local loss"
             )
             parser.add_argument(
-                "--block_num", type=int, default=2, help="number of random blocks"
+                "--num_block", type=int, default=4, help="number of random blocks"
             )
             parser.add_argument("--block_size", type=int, default=32, help="block size")
             parser.add_argument("--use_spectral_norm", default=True)
@@ -54,10 +55,13 @@ class GAS(BaseModel):
         """
         BaseModel.__init__(self, opt)
         self.style_channel = opt.style_channel
+        # used for generating blocks
+        self.num_block = opt.num_block
+        self.block_size = opt.block_size
 
         if self.isTrain:
             # For training G + D
-            self.num_dis = int(opt.dis_2 + opt.use_local_D)
+            self.num_dis = int(opt.dis_2 + opt.use_local_D + 1)
             self.visual_names = ["gt_images", "generated_images"] + [
                 "style_images_{}".format(i) for i in range(self.style_channel)
             ]
@@ -96,11 +100,10 @@ class GAS(BaseModel):
             # Therefore, #channels for D is input_nc + output_nc
             if self.num_dis == 3:
                 self.netD_local = ftgan_networks.define_D(
-                    # TODO
-                    self.style_channel + 1,
+                    2 * self.num_block,
                     opt.ndf,
                     opt.netD,
-                    opt.n_layer_D,
+                    opt.n_layers_D,
                     opt.norm,
                     opt.init_type,
                     opt.init_gain,
@@ -185,7 +188,7 @@ class GAS(BaseModel):
                 self.optimizer_D_style = torch.optim.Adam(
                     self.netD_style.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999)
                 )
-                self.optimize_r_D_local = torch.optim.Adam(
+                self.optimizer_D_local = torch.optim.Adam(
                     self.netD_style.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999)
                 )
                 self.optimizers.append(self.optimizer_D_content)
@@ -221,9 +224,10 @@ class GAS(BaseModel):
     def forward(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
         self.generated_images = self.netG((self.content_images, self.style_images))
-        self.fake_blocks, self.style_blocks = self.cut_patch_blur(
-            self.generated_images, self.style_images
-        )
+        if self.num_dis == 3:
+            self.fake_blocks, self.style_blocks, self.gt_blocks = self.cut_patch(
+                self.generated_images, self.style_images, self.gt_images
+            )
 
     def compute_gan_loss_D(self, real_images, fake_images, netD):
         # Fake
@@ -247,7 +251,11 @@ class GAS(BaseModel):
     def backward_D(self):
         """Calculate GAN loss for the discriminator"""
         if self.num_dis == 3:
-            self.loss_D_local = 0
+            self.loss_D_local = self.compute_gan_loss_D(
+                [self.style_blocks, self.gt_blocks],
+                [self.style_blocks, self.fake_blocks],
+                self.netD_local,
+            )
             self.loss_D_content = self.compute_gan_loss_D(
                 [self.content_images, self.gt_images],
                 [self.content_images, self.generated_images],
@@ -290,7 +298,22 @@ class GAS(BaseModel):
     def backward_G(self):
         """Calculate GAN and L1 loss for the generator"""
         # First, G(A) should fake the discriminator
-        if self.dis_2:
+        if self.num_dis == 3:
+            self.loss_G_content = self.compute_gan_loss_G(
+                [self.content_images, self.generated_images], self.netD_content
+            )
+            self.loss_G_style = self.compute_gan_loss_G(
+                [self.style_images, self.generated_images], self.netD_style
+            )
+            self.loss_G_local = self.compute_gan_loss_G(
+                [self.style_blocks, self.fake_blocks], self.netD_local
+            )
+            self.loss_G_GAN = (
+                self.lambda_content * self.loss_G_content
+                + self.lambda_style * self.loss_G_style
+                + self.lambda_local * self.loss_G_local
+            )
+        elif self.num_dis == 2:
             self.loss_G_content = self.compute_gan_loss_G(
                 [self.content_images, self.generated_images], self.netD_content
             )
@@ -318,7 +341,17 @@ class GAS(BaseModel):
     def optimize_parameters(self):
         self.forward()  # compute fake images: G(A)
         # update D
-        if self.dis_2:
+        if self.num_dis == 3:
+            self.set_requires_grad([self.netD_content, self.netD_style, self.netD_local], True)
+            self.optimizer_D_content.zero_grad()
+            self.optimizer_D_style.zero_grad()
+            self.optimizer_D_local.zero_grad()
+            self.backward_D()
+            self.optimizer_D_content.step()
+            self.optimizer_D_style.step()
+            self.optimizer_D_local.step()
+
+        elif self.num_dis == 2:
             self.set_requires_grad([self.netD_content, self.netD_style], True)
             self.optimizer_D_content.zero_grad()
             self.optimizer_D_style.zero_grad()
@@ -331,7 +364,9 @@ class GAS(BaseModel):
             self.backward_D()  # calculate gradients for D
             self.optimizer_D.step()  # update D's weights
         # update G
-        if self.dis_2:
+        if self.num_dis == 3:
+            self.set_requires_grad([self.netD_content, self.netD_style, self.netD_local], False)
+        elif self.num_dis == 2:
             self.set_requires_grad([self.netD_content, self.netD_style], False)
         else:
             self.set_requires_grad(
@@ -356,5 +391,41 @@ class GAS(BaseModel):
         else:
             pass
 
-    def cut_patch(self, fake_images, real_images):
-        print(real_images.shape)
+    def cut_patch(self, fake_images, real_images, gt_images):
+        # B, num_image, H(64), W(64)
+        batch_size, num_style, H, W = real_images.shape
+        fake_blk, real_blk, gt_blk = [], [], []
+        block_size = self.block_size
+        num_block = self.num_block
+        for b in range(batch_size):
+            for i in range(num_block):
+                style_idx = random.randint(0, num_style-1)
+                x = random.randint(0, H - block_size - 1)
+                y = random.randint(0, W - block_size - 1)
+
+                real_random_block = real_images.clone().detach().requires_grad_(False)
+                real_random_block = real_random_block[b, style_idx, x:x+block_size, y:y+block_size].unsqueeze(0)
+
+                fake_random_block = fake_images.clone().detach().requires_grad_(False)
+                fake_random_block = fake_random_block[b, 0, x:x+block_size, y:y+block_size].unsqueeze(0)
+
+                gt_random_block = gt_images.clone().detach().requires_grad_(False)
+                gt_random_block = gt_random_block[b, 0, x:x+block_size, y:y+block_size].unsqueeze(0)
+
+                if i == 0:
+                    real_blocks = real_random_block
+                    fake_blocks = fake_random_block
+                    gt_blocks = gt_random_block
+                else:
+                    real_blocks = torch.cat([real_blocks, real_random_block], dim=0)
+                    fake_blocks = torch.cat([fake_blocks, fake_random_block], dim=0)
+                    gt_blocks = torch.cat([gt_blocks, gt_random_block], dim=0)
+            real_blk.append(real_blocks.unsqueeze(0))
+            fake_blk.append(fake_blocks.unsqueeze(0))
+            gt_blk.append(gt_blocks.unsqueeze(0))
+
+        real_blk = torch.cat(real_blk)
+        fake_blk = torch.cat(fake_blk)
+        gt_blk = torch.cat(gt_blk)
+        return fake_blk, real_blk, gt_blk
+
