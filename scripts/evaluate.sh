@@ -1,8 +1,10 @@
 set -ex
-model="font_translator_gan"
-dataroot="./datasets/font"
-name="test_new_dataset"
-phase="test_unknown_content"
-python evaluate.py --dataroot ${dataroot} --model ${model} --name ${name} --phase ${phase} --evaluate_mode content
 
-python evaluate.py --dataroot ${dataroot}  --model ${model} --name ${name} --phase ${phase} --evaluate_mode style
+model="gas"
+dataroot="./datasets/font"
+name="gas_test"
+
+python evaluate.py --dataroot ${dataroot} --model ${model} --name ${name} --phase test_unknown_content --evaluate_mode content 
+python evaluate.py --dataroot ${dataroot}  --model ${model} --name ${name} --phase test_unknown_content --evaluate_mode style
+python evaluate.py --dataroot ${dataroot} --model ${model} --name ${name} --phase test_unknown_style --evaluate_mode content
+python evaluate.py --dataroot ${dataroot}  --model ${model} --name ${name} --phase test_unknown_style --evaluate_mode style

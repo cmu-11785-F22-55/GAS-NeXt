@@ -12,7 +12,7 @@ class Classifier:
         num_classes,
         isTrain=False,
         save_dir="evaluator/checkpoints",
-        gpu_ids=[0, 1],
+        gpu_ids=[0],
         epochs=10,
     ):
         self.gpu_ids = gpu_ids

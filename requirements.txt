@@ -2,4 +2,4 @@ torch
 torchvision
 dominate
 visdom
-Pillow==6.1
+matplotlib

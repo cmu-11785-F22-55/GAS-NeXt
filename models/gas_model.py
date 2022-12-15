@@ -56,11 +56,11 @@ class GASModel(BaseModel):
         BaseModel.__init__(self, opt)
         self.style_channel = opt.style_channel
         # used for generating blocks
-        self.num_block = opt.num_block
-        self.block_size = opt.block_size
 
         if self.isTrain:
             # For training G + D
+            self.num_block = opt.num_block
+            self.block_size = opt.block_size
             self.num_dis = int(opt.dis_2 + opt.use_local_D + 1)
             self.visual_names = ["gt_images", "generated_images"] + [
                 "style_images_{}".format(i) for i in range(self.style_channel)
@@ -224,7 +224,7 @@ class GASModel(BaseModel):
     def forward(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
         self.generated_images = self.netG((self.content_images, self.style_images))
-        if self.num_dis == 3:
+        if self.isTrain and self.num_dis == 3:
             self.fake_blocks, self.style_blocks, self.gt_blocks = self.cut_patch(
                 self.generated_images, self.style_images, self.gt_images
             )
