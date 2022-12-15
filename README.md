@@ -1,2 +1,2 @@
 # GAS-NeXt
-Please switch to gasnext branch for gasnet model.
+Please switch to branch gasnext for gasnet model.
